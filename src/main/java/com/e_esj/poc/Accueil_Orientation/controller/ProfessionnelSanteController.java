@@ -102,17 +102,25 @@ public class ProfessionnelSanteController {
     }
 
 
-    @PutMapping("/{id}")
-    public ResponseEntity<?> updateProfessionnelSante(@PathVariable Long id, ProfessionnelSante updateProfessionnel) throws EmailNonValideException, PhoneNonValideException, CINNonValideException {
-
+    @PatchMapping("/{id}")
+    public ResponseEntity<?> updateProfessionnelSante(@PathVariable Long id, @RequestBody ProfessionnelSanteDto updateProfessionnel) {
         try {
-            ProfessionnelSante updateProSnate = professionnelSanteService.updateProfessionnelSante(id, updateProfessionnel);
-            return ResponseEntity.ok(updateProSnate);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
+            ProfessionnelSanteResponseDTO updatedProSante = professionnelSanteService.updateProfessionnelSantePartial(id, updateProfessionnel);
+            return ResponseEntity.ok(updatedProSante);
+        } catch (ProfessionnelSanteException e) {
+            return ResponseEntity.notFound().build();
         }
-
     }
+    @GetMapping("/info")
+    public ResponseEntity<String> getTokenInfo(@RequestHeader("Authorization") String authorizationHeader) {
+        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
+            String token = authorizationHeader.substring(7);
+            // Decodage du token pour affichage des informations
+            return ResponseEntity.ok("Token reçu : " + token);
+        }
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Header Authorization non valide");
+    }
+
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteProferssionnelSante(@PathVariable Long id) throws ProfessionnelSanteException {

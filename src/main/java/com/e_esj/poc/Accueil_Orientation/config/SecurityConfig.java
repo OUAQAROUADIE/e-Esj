@@ -52,12 +52,12 @@ public class SecurityConfig {
                         .requestMatchers("/auth/login/**").permitAll()
                         .requestMatchers("/registration/**").permitAll()
                         .requestMatchers("/professionnelsantes/**").permitAll()
-
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oa->oa.jwt(Customizer.withDefaults()))
                 .build();
     }
+
 
 
     @Bean

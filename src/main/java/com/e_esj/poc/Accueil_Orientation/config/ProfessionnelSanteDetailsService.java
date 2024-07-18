@@ -20,22 +20,21 @@ public class ProfessionnelSanteDetailsService implements UserDetailsService {
     @Autowired
     ProfessionnelSanteRepository professionnelSanteRepository;
     @Override
+
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         Optional<ProfessionnelSante> professionnelSanteOpt = professionnelSanteRepository.findByCinOrEmail(username);
 
-        System.out.print(professionnelSanteOpt);
-
-        if(professionnelSanteOpt.isPresent()){
+        if (professionnelSanteOpt.isPresent()) {
             ProfessionnelSante professionnelSante = professionnelSanteOpt.get();
 
+            // Assuming your ROLE field is properly formatted as "ROLE_PROFESSIONELSANTE"
             return User
                     .withUsername(username)
                     .password(professionnelSante.getUser().getPassword())
-                    .roles(professionnelSante.getROLE()).build();
-        }else {
-            throw new UsernameNotFoundException("user not found");
+                    .roles(professionnelSante.getROLE()) // Make sure getROLE() returns a string like "ROLE_PROFESSIONELSANTE"
+                    .build();
+        } else {
+            throw new UsernameNotFoundException("User not found with username: " + username);
         }
-
-
     }
 }

@@ -1,5 +1,7 @@
 package com.e_esj.poc.Accueil_Orientation.service;
 
+import com.e_esj.poc.Accueil_Orientation.Dto.InfoUserDto;
+import com.e_esj.poc.Accueil_Orientation.Dto.ProfessionnelSanteDto;
 import com.e_esj.poc.Accueil_Orientation.Dto.ProfessionnelSanteResponseDTO;
 import com.e_esj.poc.Accueil_Orientation.entity.ProfessionnelSante;
 import com.e_esj.poc.Accueil_Orientation.entity.InfoUser;
@@ -13,6 +15,7 @@ import com.e_esj.poc.Accueil_Orientation.repository.PasswordResetTokenRepository
 import com.e_esj.poc.Accueil_Orientation.repository.ProfessionnelSanteRepository;
 import com.e_esj.poc.Accueil_Orientation.repository.UserRepository;
 import com.e_esj.poc.Accueil_Orientation.repository.VerificationTokenRepository;
+import jakarta.persistence.EntityManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.mail.SimpleMailMessage;
@@ -31,6 +34,8 @@ public class ProfessionnelSanteServiceImpl implements ProfessionnelSanteService{
     @Autowired
     private ProfessionnelSanteRepository professionnelSanteRepository;
 
+    @Autowired
+    private EntityManager entityManager;
 
         private JavaMailSender mailSender;
 
@@ -122,45 +127,48 @@ private VerificationTokenRepository verificationTokenRepository;
     }
 
     @Override
-    public ProfessionnelSante updateProfessionnelSante(Long id, ProfessionnelSante updateProfessionnel) throws EmailNonValideException, PhoneNonValideException, CINNonValideException {
-        Optional<ProfessionnelSante> optionalProSante = professionnelSanteRepository.findById(id);
-        if (optionalProSante.isPresent()) {
-            ProfessionnelSante existingProSante = optionalProSante.get();
+    @Transactional
+    public ProfessionnelSanteResponseDTO updateProfessionnelSantePartial(Long id, ProfessionnelSanteDto updatesDto) throws  ProfessionnelSanteException {
 
-            // Mise à jour des champs si présents dans la requête
-            if (updateProfessionnel.getCin() != null) {
-                existingProSante.setCin(updateProfessionnel.getCin());
-            }
-            if (updateProfessionnel.getInpe() != null) {
-                existingProSante.setInpe(updateProfessionnel.getInpe());
-            }
-            if (updateProfessionnel.getUser() != null) {
-                InfoUser updatedUser = updateProfessionnel.getUser();
-                InfoUser existingUser = existingProSante.getUser();
+        // Retrieve existing professionnel de santé entity from repository
+        ProfessionnelSante existingProfessionnelSante = professionnelSanteRepository.findById(id)
+                .orElseThrow(() -> new ProfessionnelSanteException("Professionnel de santé non trouvé avec l'ID : " + id));
 
-                // Mise à jour des attributs de l'utilisateur si présents dans la requête
-                if (updatedUser.getNom() != null) {
-                    existingUser.setNom(updatedUser.getNom());
-                }
-                if (updatedUser.getPrenom() != null) {
-                    existingUser.setPrenom(updatedUser.getPrenom());
-                }
-                if (updatedUser.getEmail() != null) {
-                    existingUser.setEmail(updatedUser.getEmail());
-                }
-                if (updatedUser.getTelephone() != null) {
-                    existingUser.setTelephone(updatedUser.getTelephone());
-                }
-                if (updatedUser.getPassword() != null) {
-                    existingUser.setPassword(updatedUser.getPassword());
-                }
-            }
+        // Update User fields if updatesDto contains user information
+        if (updatesDto.getUser() != null) {
+            InfoUserDto userDto = updatesDto.getUser();
+            InfoUser existingUser = existingProfessionnelSante.getUser();
 
-            // Enregistrer les modifications dans la base de données
-            return professionnelSanteRepository.save(existingProSante);
-        } else {
-            throw new IllegalArgumentException("ProfessionnelSante not found with id " + id);
+            if (userDto.getNom() != null) {
+                existingUser.setNom(userDto.getNom());
+            }
+            if (userDto.getPrenom() != null) {
+                existingUser.setPrenom(userDto.getPrenom());
+            }
+            if (userDto.getEmail() != null) {
+                existingUser.setEmail(userDto.getEmail());
+            }
+            if (userDto.getTelephone() != null) {
+                existingUser.setTelephone(userDto.getTelephone());
+            }
+            if (userDto.getPassword() != null) {
+                existingUser.setPassword(userDto.getPassword());
+            }
         }
+
+        // Update ProfessionnelSante fields if updatesDto contains professionnel de santé information
+        if (updatesDto.getCin() != null) {
+            existingProfessionnelSante.setCin(updatesDto.getCin());
+        }
+        if (updatesDto.getInpe() != null) {
+            existingProfessionnelSante.setInpe(updatesDto.getInpe());
+        }
+
+        // Save updated entities
+        userRepository.save(existingProfessionnelSante.getUser());
+        professionnelSanteRepository.save(existingProfessionnelSante);
+
+        return professionnelSanteMapper.fromProfessionnelSante(existingProfessionnelSante);
     }
 
     @Override

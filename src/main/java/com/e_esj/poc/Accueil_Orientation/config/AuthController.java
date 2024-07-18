@@ -156,6 +156,7 @@ public class AuthController {
         Authentication authentication = authenticationManagerProfessionnelSante.authenticate(
                 new UsernamePasswordAuthenticationToken(username, password));
 
+        System.out.println("authentication:::::::::::::::::::"+authentication);
         Instant instant = Instant.now();
 
         ProfessionnelSante professionnelSante = professionnelSanteRepository.findByCinOrEmail(username).orElse(null);

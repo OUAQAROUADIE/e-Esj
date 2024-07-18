@@ -8,7 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
-@Repository
+
 public interface ProfessionnelSanteRepository extends JpaRepository<ProfessionnelSante, Long> {
     @Query("SELECT p FROM ProfessionnelSante p WHERE p.cin = :cin")
     Optional<ProfessionnelSante> findByCin(@Param("cin") String cin);
