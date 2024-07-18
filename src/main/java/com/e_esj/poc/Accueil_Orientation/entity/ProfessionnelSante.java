@@ -17,7 +17,7 @@ public class ProfessionnelSante{
     private String cin;
     private String inpe;
 
-    @OneToOne(cascade = CascadeType.ALL)
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "user_id", referencedColumnName = "id")
     private InfoUser user;
     private boolean confirmed =false;

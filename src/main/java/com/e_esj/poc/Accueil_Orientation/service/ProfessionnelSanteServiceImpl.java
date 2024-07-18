@@ -1,14 +1,14 @@
 package com.e_esj.poc.Accueil_Orientation.service;
 
-import com.e_esj.poc.Accueil_Orientation.Dto.InfoUserDto;
-import com.e_esj.poc.Accueil_Orientation.Dto.ProfessionnelSanteDto;
-import com.e_esj.poc.Accueil_Orientation.entity.PasswordResetToken;
+import com.e_esj.poc.Accueil_Orientation.Dto.ProfessionnelSanteResponseDTO;
 import com.e_esj.poc.Accueil_Orientation.entity.ProfessionnelSante;
 import com.e_esj.poc.Accueil_Orientation.entity.InfoUser;
 import com.e_esj.poc.Accueil_Orientation.entity.VerificationToken;
 import com.e_esj.poc.Accueil_Orientation.exception.CINNonValideException;
 import com.e_esj.poc.Accueil_Orientation.exception.EmailNonValideException;
 import com.e_esj.poc.Accueil_Orientation.exception.PhoneNonValideException;
+import com.e_esj.poc.Accueil_Orientation.exception.ProfessionnelSanteException;
+import com.e_esj.poc.Accueil_Orientation.mappers.ProfessionnelSanteMapper;
 import com.e_esj.poc.Accueil_Orientation.repository.PasswordResetTokenRepository;
 import com.e_esj.poc.Accueil_Orientation.repository.ProfessionnelSanteRepository;
 import com.e_esj.poc.Accueil_Orientation.repository.UserRepository;
@@ -22,8 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
-
-import static com.e_esj.poc.Accueil_Orientation.entity.VerificationToken.EXPIRATION;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -46,6 +45,9 @@ public class ProfessionnelSanteServiceImpl implements ProfessionnelSanteService{
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    ProfessionnelSanteMapper professionnelSanteMapper;
 
 @Autowired
 private VerificationTokenRepository verificationTokenRepository;
@@ -114,11 +116,12 @@ private VerificationTokenRepository verificationTokenRepository;
 
 
     @Override
-    public List<ProfessionnelSante> findAllProfessionnelSante() {
-        return professionnelSanteRepository.findAll();
+    public List<ProfessionnelSanteResponseDTO> findAllProfessionnelSante() {
+        List<ProfessionnelSante> professionnelSantes = professionnelSanteRepository.findAll();
+        return professionnelSantes.stream().map(ps -> professionnelSanteMapper.fromProfessionnelSante(ps)).collect(Collectors.toList()) ;
     }
 
-    /*@Override
+    @Override
     public ProfessionnelSante updateProfessionnelSante(Long id, ProfessionnelSante updateProfessionnel) throws EmailNonValideException, PhoneNonValideException, CINNonValideException {
         Optional<ProfessionnelSante> optionalProSante = professionnelSanteRepository.findById(id);
         if (optionalProSante.isPresent()) {
@@ -158,102 +161,32 @@ private VerificationTokenRepository verificationTokenRepository;
         } else {
             throw new IllegalArgumentException("ProfessionnelSante not found with id " + id);
         }
-    }*/
-    @Override
-    public VerificationToken getVerificationToken(final String VerificationToken) {
-        return tokenRepository.findByToken(VerificationToken);
-    }
-
-
-
-    public VerificationToken generateNewVerificationToken(String existingToken) {
-        VerificationToken vToken = tokenRepository.findByToken(existingToken);
-        if (vToken != null) {
-            vToken.setExpiryDate(vToken.calculateExpiryDate(EXPIRATION)); // Mettre à jour la date d'expiration
-            vToken.updateToken(UUID.randomUUID().toString());
-            tokenRepository.save(vToken);
-            return vToken;
-        }
-        return vToken;
     }
 
     @Override
-    @Transactional
-    public void createPasswordResetTokenForUser(InfoUser user, String token) {
-        PasswordResetToken existingToken = passwordResetTokenRepository.findByUser(user);
+    public  void deleteProfessionnelSante(Long id) throws ProfessionnelSanteException {
+        ProfessionnelSante professionnelSante = professionnelSanteRepository.findById(id).orElse(null);
+        verificationTokenRepository.deleteByUserId(professionnelSante.getUser().getId());
 
-        if (existingToken != null) {
-            // Si un token existe pour cet utilisateur
-            if (existingToken.isExpired()) {
-                // Si le token existant n'est pas expiré, mettre à jour le token existant
-                existingToken.setExpiryDate(PasswordResetToken.calculateExpiryDate(PasswordResetToken.EXPIRATION));
-                existingToken.updateToken(token);
-                passwordResetTokenRepository.save(existingToken);
-                return; // Sortir de la méthode après la mise à jour
-            } else {
-                // Si le token existant est expiré, supprimer le token existant
-                passwordResetTokenRepository.delete(existingToken);
+        if(professionnelSante != null){
+            try{
+                professionnelSanteRepository.delete(professionnelSante);
+            }catch (Exception e){
+                throw new ProfessionnelSanteException("error");
             }
+
+        }else{
+            throw new ProfessionnelSanteException("Professionnel Sante not found");
         }
 
-        // Créer un nouveau token
-        PasswordResetToken newToken = new PasswordResetToken(token, user);
-        passwordResetTokenRepository.save(newToken);
+
     }
 
-    @Override
-    public void changeUserPassword(final InfoUser user, final String password) {
-        user.setPassword(passwordEncoder.encode(password));
-        userRepository.save(user);
-    }
 
-    @Override
-    public boolean checkIfValidOldPassword(final InfoUser user, final String oldPassword) {
-        return passwordEncoder.matches(oldPassword, user.getPassword());
-    }
 
-    @Override
-    public InfoUser getUser(final String verificationToken) {
-        final VerificationToken token = tokenRepository.findByToken(verificationToken);
-        if (token != null) {
-            return token.getUser();
-        }
-        return null;
-    }
-    @Override
-    public String validateVerificationToken(String token) {
-        final VerificationToken verificationToken = tokenRepository.findByToken(token);
-        if (verificationToken == null) {
-            return "TOKEN INVALID";
-        }
 
-        final InfoUser user = verificationToken.getUser();
-        final Calendar cal = Calendar.getInstance();
-        if ((verificationToken.getExpiryDate()
-                .getTime() - cal.getTime()
-                .getTime()) <= 0) {
-            tokenRepository.delete(verificationToken);
-            return "TOKEN_EXPIRED";
-        }
 
-        user.setEnabled(true);
-        // tokenRepository.delete(verificationToken);
-        userRepository.save(user);
-        return "TOKEN_VALID";
-    }
-    @Override
-    public InfoUser getUserByEmail(String email) {
-        return userRepository.findByEmail(email);
-    }
-    @Override
-    public Optional<InfoUser> validUsernameAndPassword(String email, String password) {
-        InfoUser user = getUserByEmail(email);
-        if (user != null && passwordEncoder.matches(password, user.getPassword())) {
-            return Optional.of(user);
-        } else {
-            return Optional.empty();
-        }
-    }
+
 
 
 

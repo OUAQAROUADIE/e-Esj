@@ -2,12 +2,10 @@ package com.e_esj.poc.Accueil_Orientation.controller;
 
 import com.e_esj.poc.Accueil_Orientation.Dto.PasswordDto;
 import com.e_esj.poc.Accueil_Orientation.Dto.ProfessionnelSanteDto;
+import com.e_esj.poc.Accueil_Orientation.Dto.ProfessionnelSanteResponseDTO;
 import com.e_esj.poc.Accueil_Orientation.config.ISecurityUserService;
 import com.e_esj.poc.Accueil_Orientation.entity.*;
-import com.e_esj.poc.Accueil_Orientation.exception.CINNonValideException;
-import com.e_esj.poc.Accueil_Orientation.exception.EmailNonValideException;
-import com.e_esj.poc.Accueil_Orientation.exception.InvalidOldPasswordException;
-import com.e_esj.poc.Accueil_Orientation.exception.PhoneNonValideException;
+import com.e_esj.poc.Accueil_Orientation.exception.*;
 import com.e_esj.poc.Accueil_Orientation.service.ProfessionnelSanteService;
 import com.e_esj.poc.Accueil_Orientation.service.UserService;
 import lombok.AllArgsConstructor;
@@ -32,7 +30,7 @@ import java.util.*;
 
 @RestController
 @AllArgsConstructor
-
+@RequestMapping("/professionnelsantes")
 public class ProfessionnelSanteController {
     private final Logger LOGGER = LoggerFactory.getLogger(getClass());
 
@@ -42,9 +40,7 @@ public class ProfessionnelSanteController {
     @Autowired
     UserService userService;
 
-    /*@Autowired
-    ISecurityUserService securityUserService;
-*/
+
     @Autowired
     private JavaMailSender mailSender;
 
@@ -67,66 +63,15 @@ public class ProfessionnelSanteController {
 
     @GetMapping("/resendRegistrationToken")
     public ResponseEntity<?> resendRegistrationToken(final HttpServletRequest request, @RequestParam("token") final String existingToken) {
-        final VerificationToken newToken = professionnelSanteService.generateNewVerificationToken(existingToken);
-        final InfoUser user = professionnelSanteService.getUser(newToken.getToken());
+        final VerificationToken newToken = userService.generateNewVerificationToken(existingToken);
+        final InfoUser user = userService.getUser(newToken.getToken());
         mailSender.send(constructResendVerificationTokenEmail(getAppUrl(request), request.getLocale(), newToken, user));
 
         Map<String, String> response = new HashMap<>();
         response.put("message", "Token renvoyé avec succès");
 
         return ResponseEntity.ok(response);
-       // return new GenericResponse(messages.getMessage("message.resendToken", null, request.getLocale()));
-    }
-
-    @PostMapping("/user/resetPassword")
-    public ResponseEntity<?> resetPassword(final HttpServletRequest request, @RequestParam("email") final String userEmail) {
-        final InfoUser user = userService.findUserByEmail(userEmail);
-        if (user != null) {
-            final String token = UUID.randomUUID().toString();
-            professionnelSanteService.createPasswordResetTokenForUser(user, token);
-            mailSender.send(constructResetTokenEmail(getAppUrl(request), request.getLocale(), token, user));
-        }else {
-            throw new IllegalArgumentException("user not found");
-        }
-        Map<String, String> response = new HashMap<>();
-
-        response.put("Réinitialisation du mot de passe envoyée à ",  userEmail);
-        return ResponseEntity.ok(response);
-    }
-    // Save password
-   /* @PostMapping("/user/savePassword")
-    public ResponseEntity<?> savePassword(final Locale locale, @Valid @RequestBody PasswordDto passwordDto) {
-
-        final String result = securityUserService.validatePasswordResetToken(passwordDto.getToken());
-
-        if (result != null) {
-            Map<String, String> response = new HashMap<>();
-            response.put("message", messages.getMessage("auth.message." + result, null, locale));
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-        }
-
-        Optional<InfoUser> user = userService.getUserByPasswordResetToken(passwordDto.getToken());
-        if (user.isPresent()) {
-            professionnelSanteService.changeUserPassword(user.get(), passwordDto.getNewPassword());
-            Map<String, String> response = new HashMap<>();
-            response.put("message", messages.getMessage("message.resetPasswordSuc", null, locale));
-            return ResponseEntity.ok(response);
-        } else {
-            Map<String, String> response = new HashMap<>();
-            response.put("message", messages.getMessage("auth.message.invalid", null, locale));
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-        }
-    }*/
-
-    // Change user password
-    @PostMapping("/user/updatePassword")
-    public GenericResponse changeUserPassword(final Locale locale, @Valid PasswordDto passwordDto) throws InvalidOldPasswordException {
-        final InfoUser user = userService.findUserByEmail(((InfoUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal()).getEmail());
-        if (!professionnelSanteService.checkIfValidOldPassword(user, passwordDto.getOldPassword())) {
-            throw new InvalidOldPasswordException("Invalid mote de passe");
-        }
-        professionnelSanteService.changeUserPassword(user, passwordDto.getNewPassword());
-        return new GenericResponse(messages.getMessage("message.updatePasswordSuc", null, locale));
+        // return new GenericResponse(messages.getMessage("message.resendToken", null, request.getLocale()));
     }
 
     private SimpleMailMessage constructResendVerificationTokenEmail(final String contextPath, final Locale locale, final VerificationToken newToken, final InfoUser user) {
@@ -135,11 +80,6 @@ public class ProfessionnelSanteController {
         return constructEmail("Resend Registration Token", message + " \r\n" + confirmationUrl, user);
     }
 
-    private SimpleMailMessage constructResetTokenEmail(final String contextPath, final Locale locale, final String token, final InfoUser user) {
-        final String url = contextPath + "/user/changePassword?token=" + token;
-        final String message = messages.getMessage("message.resetPassword", null, locale);
-        return constructEmail("Reset Password", message + " \r\n" + url, user);
-    }
 
     private SimpleMailMessage constructEmail(String subject, String body, InfoUser user) {
         final SimpleMailMessage email = new SimpleMailMessage();
@@ -155,66 +95,46 @@ public class ProfessionnelSanteController {
     }
 
     @GetMapping("/{id}")
-    public  ResponseEntity<ProfessionnelSante> getProfessionnelSante(@PathVariable Long id) throws CINNonValideException, PhoneNonValideException, EmailNonValideException {
+    public ResponseEntity<ProfessionnelSante> getProfessionnelSante(@PathVariable Long id) throws CINNonValideException, PhoneNonValideException, EmailNonValideException {
         ProfessionnelSante professionnelSante = professionnelSanteService.getProfessionnelSante(id);
         return professionnelSante != null ? ResponseEntity.ok(professionnelSante) : ResponseEntity.notFound().build();
 
     }
 
 
-  /*  @PostMapping("/authenticate")
-    public ResponseEntity<?> authenticate(@Valid @RequestBody LoginRequest loginRequest) {
-        Optional<InfoUser> userOptional = securityUserService.authenticateAndGenerateToken(loginRequest.getEmail(), loginRequest.getPassword());
-        if (userOptional.isPresent()) {
-            InfoUser user = userOptional.get();
-            String authToken = jwtUtil.generateToken(user.getEmail()); // Générer le token JWT avec l'email
-            Map<String, Object> response = new HashMap<>();
-            response.put("token", authToken);
-            response.put("user", user); // Vous pouvez ajouter d'autres informations utilisateur nécessaires
-            return ResponseEntity.ok(response);
-        }
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-    }
-*/
-   /* // Endpoint pour la connexion
-    @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateProfessionnelSante(@PathVariable Long id, ProfessionnelSante updateProfessionnel) throws EmailNonValideException, PhoneNonValideException, CINNonValideException {
+
         try {
-            // Recherche de l'utilisateur par email
-            InfoUser user = userService.findUserByEmail(loginRequest.getEmail());
-
-            if (user == null) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-            }
-
-            // Vérification du mot de passe encodé
-            if (passwordEncoder.matches(passwordEncoder.encode(loginRequest.getPassword()), user.getPassword())) {
-                // Génération du token d'authentification si les identifiants sont valides
-                String authToken = securityUserService.authenticateAndGenerateToken(loginRequest.getEmail(), loginRequest.getPassword());
-
-                if (authToken != null) {
-                    return ResponseEntity.ok(Collections.singletonMap("token", authToken));
-                } else {
-                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-                }
-            } else {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-            }
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-*/
-   /* @PutMapping("/{id}")
-    public ResponseEntity<ProfessionnelSante> updateProfessionnelSante(@PathVariable Long id, @RequestBody ProfessionnelSante updatedDetails) {
-        try {
-            ProfessionnelSante updatedProSante = professionnelSanteService.updateProfessionnelSante(id, updatedDetails);
-            return ResponseEntity.ok(updatedProSante);
+            ProfessionnelSante updateProSnate = professionnelSanteService.updateProfessionnelSante(id, updateProfessionnel);
+            return ResponseEntity.ok(updateProSnate);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
+
     }
-*/
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteProferssionnelSante(@PathVariable Long id) throws ProfessionnelSanteException {
+        try {
+            professionnelSanteService.deleteProfessionnelSante(id);
+            return ResponseEntity.ok("successfully deleted");
+        } catch (ProfessionnelSanteException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/pro")
+    public ResponseEntity<List<ProfessionnelSanteResponseDTO>> getAllProfessionnelSante() {
+            List<ProfessionnelSanteResponseDTO> professionnelSanteResponseDTOS = professionnelSanteService.findAllProfessionnelSante();
+           return  ResponseEntity.ok(professionnelSanteResponseDTOS);
+
+
+
+    }
+
+
+
   /*  @GetMapping("/registrationConfirm")
     public ModelAndView confirmRegistration(final HttpServletRequest request, final ModelMap model, @RequestParam("token") final String token) throws UnsupportedEncodingException {
         Locale locale = request.getLocale();
@@ -242,7 +162,7 @@ public class ProfessionnelSanteController {
         SecurityContextHolder.getContext().setAuthentication(authentication);
     }*/
 
-    }
+}
 
 
 
