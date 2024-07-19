@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 public class Medecin {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id;
+    private Long id;
     private String cin;
     private String inpe;
     private String ppr;
