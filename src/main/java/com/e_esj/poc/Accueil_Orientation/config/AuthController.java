@@ -76,7 +76,7 @@ public class AuthController {
 
         Map<String, Object> claims = new HashMap<>();
         claims.put("username", username);
-        claims.put("role", scope);
+        //claims.put("role", scope);
 
         if (jeune != null) {
             claims.put("id", jeune.getId());
@@ -89,6 +89,7 @@ public class AuthController {
 
         JwtClaimsSet jwtClaimsSet = JwtClaimsSet.builder()
                 .issuedAt(instant)
+                .claim("authorities", scope)
                 .expiresAt(instant.plus(10, ChronoUnit.MINUTES))
                 .subject(username)
                 .claim("claims",claims)
@@ -167,7 +168,7 @@ public class AuthController {
 
         Map<String, Object> claims = new HashMap<>();
         claims.put("username", username);
-        claims.put("role", scope);
+        //claims.put("role", scope);
 
         if (professionnelSante != null) {
             claims.put("id", professionnelSante.getId());
@@ -180,6 +181,7 @@ public class AuthController {
 
         JwtClaimsSet jwtClaimsSet = JwtClaimsSet.builder()
                 .issuedAt(instant)
+                .claim("authorities", scope)
                 .expiresAt(instant.plus(10, ChronoUnit.MINUTES))
                 .subject(username)
                 .claim("claims", claims)

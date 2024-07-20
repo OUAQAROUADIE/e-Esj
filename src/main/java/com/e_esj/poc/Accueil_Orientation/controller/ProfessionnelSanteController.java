@@ -30,7 +30,6 @@ import java.util.*;
 
 @RestController
 @AllArgsConstructor
-@RequestMapping("/professionnelsantes")
 public class ProfessionnelSanteController {
     private final Logger LOGGER = LoggerFactory.getLogger(getClass());
 
@@ -53,7 +52,7 @@ public class ProfessionnelSanteController {
     @Autowired
     private Environment env;
 
-    @PostMapping("/registration")
+    @PostMapping("/register/professionnelsantes")
     public ResponseEntity<?> registerUserAccount(@RequestBody @Valid ProfessionnelSante professionnelSante) throws CINNonValideException, PhoneNonValideException, EmailNonValideException {
         LOGGER.debug("Registering user account with information: {}", professionnelSante);
         System.out.print(professionnelSante);
@@ -94,7 +93,7 @@ public class ProfessionnelSanteController {
         return "http://" + request.getServerName() + ":" + request.getServerPort() + request.getContextPath();
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/professionnelsantes/{id}")
     public ResponseEntity<ProfessionnelSante> getProfessionnelSante(@PathVariable Long id) throws CINNonValideException, PhoneNonValideException, EmailNonValideException {
         ProfessionnelSante professionnelSante = professionnelSanteService.getProfessionnelSante(id);
         return professionnelSante != null ? ResponseEntity.ok(professionnelSante) : ResponseEntity.notFound().build();
@@ -102,7 +101,7 @@ public class ProfessionnelSanteController {
     }
 
 
-    @PatchMapping("/{id}")
+    @PatchMapping("/professionnelsantes/{id}")
     public ResponseEntity<?> updateProfessionnelSante(@PathVariable Long id, @RequestBody ProfessionnelSanteDto updateProfessionnel) {
         try {
             ProfessionnelSanteResponseDTO updatedProSante = professionnelSanteService.updateProfessionnelSantePartial(id, updateProfessionnel);
@@ -111,18 +110,10 @@ public class ProfessionnelSanteController {
             return ResponseEntity.notFound().build();
         }
     }
-    @GetMapping("/info")
-    public ResponseEntity<String> getTokenInfo(@RequestHeader("Authorization") String authorizationHeader) {
-        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-            String token = authorizationHeader.substring(7);
-            // Decodage du token pour affichage des informations
-            return ResponseEntity.ok("Token reçu : " + token);
-        }
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Header Authorization non valide");
-    }
 
 
-    @DeleteMapping("/{id}")
+
+    @DeleteMapping("/professionnelsantes/{id}")
     public ResponseEntity<?> deleteProferssionnelSante(@PathVariable Long id) throws ProfessionnelSanteException {
         try {
             professionnelSanteService.deleteProfessionnelSante(id);
@@ -132,7 +123,7 @@ public class ProfessionnelSanteController {
         }
     }
 
-    @GetMapping("/pro")
+    @GetMapping("/professionnelsantes/pro")
     public ResponseEntity<List<ProfessionnelSanteResponseDTO>> getAllProfessionnelSante() {
             List<ProfessionnelSanteResponseDTO> professionnelSanteResponseDTOS = professionnelSanteService.findAllProfessionnelSante();
            return  ResponseEntity.ok(professionnelSanteResponseDTOS);
